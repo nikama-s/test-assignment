@@ -8,6 +8,7 @@
 package ua.kpi.comsys.test2.implementation;
 
 import java.io.File;
+import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -18,17 +19,33 @@ import ua.kpi.comsys.test2.NumberList;
 /**
  * Custom implementation of INumberList interface.
  * Has to be implemented by each student independently.
- *
- * @author Alexander Podrubailo
+ * 
+ * @author Масло Вероніка, ІМ-33, № студентки в списку групи 14
  *
  */
 public class NumberListImpl implements NumberList {
+
+    private static class Node {
+        Byte value;
+        Node prev;
+        Node next;
+
+        Node(Byte value) {
+            this.value = value;
+            this.prev = this;
+            this.next = this;
+        }
+    }
+
+    private Node head;
+    private int size;
 
     /**
      * Default constructor. Returns empty <tt>NumberListImpl</tt>
      */
     public NumberListImpl() {
-        // TODO Auto-generated method stub
+        head = null;
+        size = 0;
     }
 
 
@@ -50,7 +67,32 @@ public class NumberListImpl implements NumberList {
      * @param value - number in string notation.
      */
     public NumberListImpl(String value) {
-        // TODO Auto-generated method stub
+        this();
+        if (value == null || value.isEmpty()) {
+            return;
+        }
+        
+        try {
+            if (value.startsWith("-") || !value.matches("\\d+")) {
+                return;
+            }
+            
+            BigInteger decimalValue = new BigInteger(value);
+            if (decimalValue.compareTo(BigInteger.ZERO) < 0) {
+                return;
+            }
+            
+            if (decimalValue.equals(BigInteger.ZERO)) {
+                add((byte) 0);
+            } else {
+                while (decimalValue.compareTo(BigInteger.ZERO) > 0) {
+                    BigInteger[] divRem = decimalValue.divideAndRemainder(BigInteger.valueOf(16));
+                    add(divRem[1].byteValue());
+                    decimalValue = divRem[0];
+                }
+            }
+        } catch (NumberFormatException e) {
+        }
     }
 
 
@@ -71,8 +113,7 @@ public class NumberListImpl implements NumberList {
      * @return student's record book number.
      */
     public static int getRecordBookNumber() {
-        // TODO Auto-generated method stub
-        return 0;
+        return 14;
     }
 
 
@@ -134,22 +175,19 @@ public class NumberListImpl implements NumberList {
 
     @Override
     public int size() {
-        // TODO Auto-generated method stub
-        return 0;
+        return size;
     }
 
 
     @Override
     public boolean isEmpty() {
-        // TODO Auto-generated method stub
-        return false;
+        return size == 0;
     }
 
 
     @Override
     public boolean contains(Object o) {
-        // TODO Auto-generated method stub
-        return false;
+        return indexOf(o) >= 0;
     }
 
 
@@ -176,14 +214,25 @@ public class NumberListImpl implements NumberList {
 
     @Override
     public boolean add(Byte e) {
-        // TODO Auto-generated method stub
-        return false;
+        if (e == null) {
+            throw new NullPointerException();
+        }
+        if (e < 0 || e > 15) {
+            throw new IllegalArgumentException("Digit must be in range 0-15 for hexadecimal");
+        }
+        
+        add(size, e);
+        return true;
     }
 
 
     @Override
     public boolean remove(Object o) {
-        // TODO Auto-generated method stub
+        int index = indexOf(o);
+        if (index >= 0) {
+            remove(index);
+            return true;
+        }
         return false;
     }
 
@@ -225,50 +274,170 @@ public class NumberListImpl implements NumberList {
 
     @Override
     public void clear() {
-        // TODO Auto-generated method stub
-
+        head = null;
+        size = 0;
     }
 
+    private Node getNode(int index) {
+        if (index < 0 || index >= size) {
+        throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+        }
+        
+        if (head == null) {    
+            return null;
+        }
+        
+        Node current = head;
+        for (int i = 0; i < index; i++) {
+            current = current.next;
+        }
+        return current;
+    }
 
     @Override
     public Byte get(int index) {
-        // TODO Auto-generated method stub
-        return null;
+        if (index < 0 || index >= size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+        }
+        Node node = getNode(index);
+        return node != null ? node.value : null;
     }
 
 
     @Override
     public Byte set(int index, Byte element) {
-        // TODO Auto-generated method stub
-        return null;
+        if (element == null) {
+            throw new NullPointerException();
+        }
+        if (element < 0 || element > 15) {
+            throw new IllegalArgumentException("Digit must be in range 0-15 for hexadecimal");
+        }
+        if (index < 0 || index >= size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+        }
+        
+        Node node = getNode(index);
+        Byte oldValue = node.value;
+        node.value = element;
+        return oldValue;
     }
 
 
     @Override
     public void add(int index, Byte element) {
-        // TODO Auto-generated method stub
-
+        if (element == null) {
+            throw new NullPointerException();
+        }
+        if (element < 0 || element > 15) {
+            throw new IllegalArgumentException("Digit must be in range 0-15 for hexadecimal");
+        }
+        if (index < 0 || index > size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+        }
+        
+        Node newNode = new Node(element);
+        
+        if (size == 0) {
+            head = newNode;
+            size = 1;
+        } else if (index == size) {
+            Node last = head.prev;
+            newNode.next = head;
+            newNode.prev = last;
+            last.next = newNode;
+            head.prev = newNode;
+            size++;
+        } else {
+            Node current = getNode(index);
+            Node prevNode = current.prev;
+            
+            newNode.next = current;
+            newNode.prev = prevNode;
+            prevNode.next = newNode;
+            current.prev = newNode;
+            
+            if (index == 0) {
+                head = newNode;
+            }
+            size++;
+        }
     }
 
 
     @Override
     public Byte remove(int index) {
-        // TODO Auto-generated method stub
-        return null;
+        if (index < 0 || index >= size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+        }
+        
+        Node nodeToRemove = getNode(index);
+        Byte value = nodeToRemove.value;
+        
+        if (size == 1) {
+            head = null;
+            size = 0;
+        } else {
+            Node prevNode = nodeToRemove.prev;
+            Node nextNode = nodeToRemove.next;
+            
+            prevNode.next = nextNode;
+            nextNode.prev = prevNode;
+            
+            if (index == 0) {
+                head = nextNode;
+            }
+            size--;
+        }
+        
+        return value;
     }
 
 
     @Override
     public int indexOf(Object o) {
-        // TODO Auto-generated method stub
-        return 0;
+        if (o == null || head == null) {
+            return -1;
+        }
+        
+        if (!(o instanceof Byte)) {
+            return -1;
+        }
+        
+        Byte target = (Byte) o;
+        Node current = head;
+        
+        for (int i = 0; i < size; i++) {
+            if (target.equals(current.value)) {
+                return i;
+            }
+            current = current.next;
+        }
+        
+        return -1;
     }
 
 
     @Override
     public int lastIndexOf(Object o) {
-        // TODO Auto-generated method stub
-        return 0;
+        if (o == null || head == null) {
+            return -1;
+        }
+        
+        if (!(o instanceof Byte)) {
+            return -1;
+        }
+        
+        Byte target = (Byte) o;
+        Node current = head.prev;
+        
+        for (int i = size - 1; i >= 0; i--) {
+            if (target.equals(current.value)) {
+                return i;
+            }
+            current = current.prev;
+        }
+        
+        return -1;
     }
 
 
