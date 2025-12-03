@@ -193,15 +193,20 @@ public class NumberListImpl implements NumberList {
 
     @Override
     public Iterator<Byte> iterator() {
-        // TODO Auto-generated method stub
-        return null;
+        return listIterator();
     }
 
 
     @Override
     public Object[] toArray() {
-        // TODO Auto-generated method stub
-        return null;
+        Object[] array = new Object[size];
+        int i = 0;
+        Node current = head;
+        for (int j = 0; j < size; j++) {
+            array[i++] = current.value;
+            current = current.next;
+        }
+        return array;
     }
 
 
@@ -239,36 +244,94 @@ public class NumberListImpl implements NumberList {
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        // TODO Auto-generated method stub
-        return false;
+        if (c == null) {
+            throw new NullPointerException();
+        }
+        if (c.isEmpty()) {
+            return true;
+        }
+        for (Object o : c) {
+            if (!contains(o)) {
+                return false;
+            }
+        }
+        return true;
     }
 
 
     @Override
     public boolean addAll(Collection<? extends Byte> c) {
-        // TODO Auto-generated method stub
-        return false;
+        if (c == null) {
+            throw new NullPointerException();
+        }
+        if (c.isEmpty()) {
+            return false;
+        }
+        boolean modified = false;
+        for (Byte e : c) {
+            if (add(e)) {
+                modified = true;
+            }
+        }
+        return modified;
     }
 
 
     @Override
     public boolean addAll(int index, Collection<? extends Byte> c) {
-        // TODO Auto-generated method stub
-        return false;
+        if (c == null) {
+            throw new NullPointerException();
+        }
+        if (index < 0 || index > size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+        }
+        if (c.isEmpty()) {
+            return false;
+        }
+        
+        int i = index;
+        for (Byte e : c) {
+            add(i, e);
+            i++;
+        }
+        return true;
     }
 
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        // TODO Auto-generated method stub
-        return false;
+        if (c == null) {
+            throw new NullPointerException();
+        }
+        if (c.isEmpty()) {
+            return false;
+        }
+        boolean modified = false;
+        Iterator<?> it = iterator();
+        while (it.hasNext()) {
+            if (c.contains(it.next())) {
+                it.remove();
+                modified = true;
+            }
+        }
+        return modified;
     }
 
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        // TODO Auto-generated method stub
-        return false;
+        if (c == null) {
+            throw new NullPointerException();
+        }
+        boolean modified = false;
+        Iterator<Byte> it = iterator();
+        while (it.hasNext()) {
+            if (!c.contains(it.next())) {
+                it.remove();
+                modified = true;
+            }
+        }
+        return modified;
     }
 
 
@@ -443,54 +506,245 @@ public class NumberListImpl implements NumberList {
 
     @Override
     public ListIterator<Byte> listIterator() {
-        // TODO Auto-generated method stub
-        return null;
+        return listIterator(0);
     }
 
 
     @Override
     public ListIterator<Byte> listIterator(int index) {
-        // TODO Auto-generated method stub
-        return null;
+        if (index < 0 || index > size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+        }
+        return new NumberListIterator(index);
+    }
+
+    private class NumberListIterator implements ListIterator<Byte> {
+        private Node nextNode;
+        private Node lastReturned;
+        private int nextIndex;
+
+        NumberListIterator(int index) {
+            if (index == size) {
+                nextNode = head;
+                nextIndex = size;
+            } else {
+                nextNode = getNode(index);
+                nextIndex = index;
+            }
+        }
+
+        @Override
+        public boolean hasNext() {
+            return nextIndex < size;
+        }
+
+        @Override
+        public Byte next() {
+            if (!hasNext()) {
+                throw new java.util.NoSuchElementException();
+            }
+            lastReturned = nextNode;
+            nextNode = nextNode.next;
+            nextIndex++;
+            return lastReturned.value;
+        }
+
+        @Override
+        public boolean hasPrevious() {
+            return nextIndex > 0;
+        }
+
+        @Override
+        public Byte previous() {
+            if (!hasPrevious()) {
+                throw new java.util.NoSuchElementException();
+            }
+            nextNode = nextNode.prev;
+            nextIndex--;
+            lastReturned = nextNode;
+            return lastReturned.value;
+        }
+
+        @Override
+        public int nextIndex() {
+            return nextIndex;
+        }
+
+        @Override
+        public int previousIndex() {
+            return nextIndex - 1;
+        }
+
+        @Override
+        public void remove() {
+            if (lastReturned == null) {
+                throw new IllegalStateException();
+            }
+            Node prev = lastReturned.prev;
+            Node next = lastReturned.next;
+            
+            prev.next = next;
+            next.prev = prev;
+            
+            if (lastReturned == head) {
+                head = next;
+            }
+            
+            if (nextNode == lastReturned) {
+                nextNode = next;
+            } else {
+                nextIndex--;
+            }
+            
+            size--;
+            lastReturned = null;
+        }
+
+        @Override
+        public void set(Byte e) {
+            if (lastReturned == null) {
+                throw new IllegalStateException();
+            }
+            if (e == null) {
+                throw new NullPointerException();
+            }
+            if (e < 0 || e > 15) {
+                throw new IllegalArgumentException("Digit must be in range 0-15 for hexadecimal");
+            }
+            lastReturned.value = e;
+        }
+
+        @Override
+        public void add(Byte e) {
+            if (e == null) {
+                throw new NullPointerException();
+            }
+            if (e < 0 || e > 15) {
+                throw new IllegalArgumentException("Digit must be in range 0-15 for hexadecimal");
+            }
+            
+            lastReturned = null;
+            
+            if (nextNode == null || size == 0) {
+                Node newNode = new Node(e);
+                head = newNode;
+                nextNode = newNode;
+                size = 1;
+            } else {
+                Node newNode = new Node(e);
+                Node prev = nextNode.prev;
+                
+                newNode.next = nextNode;
+                newNode.prev = prev;
+                prev.next = newNode;
+                nextNode.prev = newNode;
+                
+                if (nextNode == head) {
+                    head = newNode;
+                }
+                size++;
+            }
+            nextIndex++;
+        }
     }
 
 
     @Override
     public List<Byte> subList(int fromIndex, int toIndex) {
-        // TODO Auto-generated method stub
-        return null;
+        if (fromIndex < 0 || toIndex > size || fromIndex > toIndex) {
+            throw new IndexOutOfBoundsException();
+        }
+        
+        NumberListImpl subList = new NumberListImpl();
+        for (int i = fromIndex; i < toIndex; i++) {
+            subList.add(get(i));
+        }
+        return subList;
     }
 
 
     @Override
     public boolean swap(int index1, int index2) {
-        // TODO Auto-generated method stub
-        return false;
+        if (index1 < 0 || index1 >= size || index2 < 0 || index2 >= size) {
+            return false;
+        }
+        if (index1 == index2) {
+            return true;
+        }
+        
+        Node node1 = getNode(index1);
+        Node node2 = getNode(index2);
+        
+        Byte temp = node1.value;
+        node1.value = node2.value;
+        node2.value = temp;
+        
+        return true;
     }
 
 
     @Override
     public void sortAscending() {
-        // TODO Auto-generated method stub
+        if (size <= 1) {
+            return;
+        }
+        
+        boolean swapped;
+        do {
+            swapped = false;
+            Node current = head;
+            for (int i = 0; i < size - 1; i++) {
+                if (current.value > current.next.value) {
+                    Byte temp = current.value;
+                    current.value = current.next.value;
+                    current.next.value = temp;
+                    swapped = true;
+                }
+                current = current.next;
+            }
+        } while (swapped);
     }
 
 
     @Override
     public void sortDescending() {
-        // TODO Auto-generated method stub
+        if (size <= 1) {
+            return;
+        }
+        
+        boolean swapped;
+        do {
+            swapped = false;
+            Node current = head;
+            for (int i = 0; i < size - 1; i++) {
+                if (current.value < current.next.value) {
+                    Byte temp = current.value;
+                    current.value = current.next.value;
+                    current.next.value = temp;
+                    swapped = true;
+                }
+                current = current.next;
+            }
+        } while (swapped);
     }
 
 
     @Override
     public void shiftLeft() {
-        // TODO Auto-generated method stub
+        if (size <= 1) {
+            return;
+        }
 
+        head = head.next;
     }
 
 
     @Override
     public void shiftRight() {
-        // TODO Auto-generated method stub
+        if (size <= 1) {
+            return;
+        }
 
+        head = head.prev;
     }
 }
