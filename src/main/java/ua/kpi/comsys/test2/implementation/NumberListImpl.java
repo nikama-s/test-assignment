@@ -7,7 +7,12 @@
 
 package ua.kpi.comsys.test2.implementation;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Iterator;
@@ -39,6 +44,7 @@ public class NumberListImpl implements NumberList {
 
     private Node head;
     private int size;
+    private int base = 16;
 
     /**
      * Default constructor. Returns empty <tt>NumberListImpl</tt>
@@ -46,6 +52,16 @@ public class NumberListImpl implements NumberList {
     public NumberListImpl() {
         head = null;
         size = 0;
+        base = 16;
+    }
+
+    /**
+     * Private constructor for creating list with specific base.
+     */
+    private NumberListImpl(int base) {
+        head = null;
+        size = 0;
+        this.base = base;
     }
 
 
@@ -56,7 +72,38 @@ public class NumberListImpl implements NumberList {
      * @param file - file where number is stored.
      */
     public NumberListImpl(File file) {
-        // TODO Auto-generated method stub
+        this();
+        if (file == null || !file.exists()) {
+            return;
+        }
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line = br.readLine();
+            if (line == null || line.isEmpty()) {
+                return;
+            }
+            
+            if (line.startsWith("-") || !line.matches("\\d+")) {
+                return;
+            }
+            
+            BigInteger decimalValue = new BigInteger(line);
+            if (decimalValue.compareTo(BigInteger.ZERO) < 0) {
+                return;
+            }
+            
+            if (decimalValue.equals(BigInteger.ZERO)) {
+                add((byte) 0);
+            } else {
+                while (decimalValue.compareTo(BigInteger.ZERO) > 0) {
+                    BigInteger[] divRem = decimalValue.divideAndRemainder(BigInteger.valueOf(16));
+                    add(divRem[1].byteValue());
+                    decimalValue = divRem[0];
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+            // Return empty list on error
+        }
     }
 
 
@@ -103,7 +150,15 @@ public class NumberListImpl implements NumberList {
      * @param file - file where number has to be stored.
      */
     public void saveList(File file) {
-        // TODO Auto-generated method stub
+        if (file == null) {
+            return;
+        }
+        
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
+            bw.write(toDecimalString());
+        } catch (IOException e) {
+            // Silently fail on error
+        }
     }
 
 
@@ -113,7 +168,7 @@ public class NumberListImpl implements NumberList {
      * @return student's record book number.
      */
     public static int getRecordBookNumber() {
-        return 14;
+        return 4214;
     }
 
 
@@ -126,8 +181,53 @@ public class NumberListImpl implements NumberList {
      * @return <tt>NumberListImpl</tt> in other scale of notation.
      */
     public NumberListImpl changeScale() {
-        // TODO Auto-generated method stub
-        return null;
+        // C5=4 means hex (base 16), additional scale = (C5+1) mod 5 = 0 = binary (base 2)
+        int targetBase = 2;
+        
+        NumberListImpl result = new NumberListImpl(targetBase);
+        
+        if (isEmpty()) {
+            result.addInternal((byte) 0);
+            return result;
+        }
+        
+        BigInteger decimalValue = new BigInteger(toDecimalString());
+        
+        if (decimalValue.equals(BigInteger.ZERO)) {
+            result.addInternal((byte) 0);
+        } else {
+            while (decimalValue.compareTo(BigInteger.ZERO) > 0) {
+                BigInteger[] divRem = decimalValue.divideAndRemainder(BigInteger.valueOf(targetBase));
+                result.addInternal(divRem[1].byteValue());
+                decimalValue = divRem[0];
+            }
+        }
+        
+        return result;
+    }
+
+    /**
+     * Internal add method that bypasses the hex digit validation.
+     * Used for creating lists in different bases.
+     */
+    private void addInternal(Byte element) {
+        if (element == null) {
+            throw new NullPointerException();
+        }
+        
+        Node newNode = new Node(element);
+        
+        if (size == 0) {
+            head = newNode;
+            size = 1;
+        } else {
+            Node last = head.prev;
+            newNode.next = head;
+            newNode.prev = last;
+            last.next = newNode;
+            head.prev = newNode;
+            size++;
+        }
     }
 
 
@@ -142,8 +242,31 @@ public class NumberListImpl implements NumberList {
      * @return result of additional operation.
      */
     public NumberListImpl additionalOperation(NumberList arg) {
-        // TODO Auto-generated method stub
-        return null;
+        // C7=0 means addition
+        if (arg == null) {
+            return null;
+        }
+        
+        NumberListImpl other = (NumberListImpl) arg;
+        
+        BigInteger thisValue = new BigInteger(this.toDecimalString());
+        BigInteger otherValue = new BigInteger(other.toDecimalString());
+        
+        BigInteger sum = thisValue.add(otherValue);
+        
+        NumberListImpl result = new NumberListImpl(this.base);
+        
+        if (sum.equals(BigInteger.ZERO)) {
+            result.addInternal((byte) 0);
+        } else {
+            while (sum.compareTo(BigInteger.ZERO) > 0) {
+                BigInteger[] divRem = sum.divideAndRemainder(BigInteger.valueOf(this.base));
+                result.addInternal(divRem[1].byteValue());
+                sum = divRem[0];
+            }
+        }
+        
+        return result;
     }
 
 
@@ -154,22 +277,79 @@ public class NumberListImpl implements NumberList {
      * @return string representation in <b>decimal</b> scale.
      */
     public String toDecimalString() {
-        // TODO Auto-generated method stub
-        return null;
+        if (isEmpty()) {
+            return "0";
+        }
+        
+        BigInteger result = BigInteger.ZERO;
+        BigInteger baseValue = BigInteger.valueOf(base);
+        BigInteger multiplier = BigInteger.ONE;
+        
+        Node current = head;
+        for (int i = 0; i < size; i++) {
+            result = result.add(BigInteger.valueOf(current.value).multiply(multiplier));
+            multiplier = multiplier.multiply(baseValue);
+            current = current.next;
+        }
+        
+        return result.toString();
     }
 
 
     @Override
     public String toString() {
-        // TODO Auto-generated method stub
-        return null;
+        if (isEmpty()) {
+            return "0";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        Node current = head.prev;
+        
+        for (int i = size - 1; i >= 0; i--) {
+            byte digit = current.value;
+            if (digit < 10) {
+                sb.append((char) ('0' + digit));
+            } else {
+                sb.append((char) ('A' + (digit - 10)));
+            }
+            current = current.prev;
+        }
+        
+        return sb.toString();
     }
 
 
     @Override
     public boolean equals(Object o) {
-        // TODO Auto-generated method stub
-        return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof NumberListImpl)) {
+            return false;
+        }
+        
+        NumberListImpl other = (NumberListImpl) o;
+        
+        if (this.size != other.size) {
+            return false;
+        }
+        
+        if (this.isEmpty() && other.isEmpty()) {
+            return true;
+        }
+        
+        Node thisCurrent = this.head;
+        Node otherCurrent = other.head;
+        
+        for (int i = 0; i < size; i++) {
+            if (!thisCurrent.value.equals(otherCurrent.value)) {
+                return false;
+            }
+            thisCurrent = thisCurrent.next;
+            otherCurrent = otherCurrent.next;
+        }
+        
+        return true;
     }
 
 
